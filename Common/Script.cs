@@ -10,7 +10,6 @@ namespace SpaceEngineersScripts
 		protected IMyGridTerminalSystem GridTerminalSystem;
 		protected IMyTerminalBlock Me;
 
-		protected LogDelegate Echo;
 		protected int logLevel = LOG_NORMAL;
 
 		public String logScreenName = null;
@@ -27,11 +26,10 @@ namespace SpaceEngineersScripts
 
 		public delegate void LogDelegate(string message);
 
-		public Script (IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me,LogDelegate Echo)
+		public Script (IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me)
 		{
 			this.GridTerminalSystem = GridTerminalSystem;
 			this.Me = Me;
-			this.Echo = Echo;
 		}
 
 		public abstract void Update (String argument);
@@ -42,14 +40,14 @@ namespace SpaceEngineersScripts
 			clockStart = DateTime.Now.Ticks;
 		}
 
-		List<IMyTerminalBlock> GetBlocks<T> ()  where T : IMyTerminalBlock
+		protected List<IMyTerminalBlock> GetBlocks<T> ()  where T : IMyTerminalBlock
 		{
 			List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock> ();
 			GridTerminalSystem.GetBlocksOfType<T> (blocks);
 			return blocks;
 		}
 
-		List<IMyTerminalBlock> GetBlocksWithName (string name, string error = "")
+		protected List<IMyTerminalBlock> GetBlocksWithName (string name, string error = "")
 		{
 			List<IMyTerminalBlock> result = new List<IMyTerminalBlock> ();
 			List<IMyBlockGroup> groups = new List<IMyBlockGroup> ();
@@ -78,14 +76,14 @@ namespace SpaceEngineersScripts
 
 		}
 
-		T GetBlock<T> (string error = "") where T : IMyTerminalBlock
+		protected T GetBlock<T> (string error = "") where T : IMyTerminalBlock
 		{
 			List<IMyTerminalBlock> blocks = GetBlocks<T> ();
 			if (blocks.Count == 0) {
 				if (error == null || error.Length == 0)
-					Echo ("Impossible de trouver le block de type " + typeof(T).Name);
+					Log ("Impossible de trouver le block de type " + typeof(T).Name);
 				else
-					Echo (error);
+					Log (error);
 				return default(T);
 			} else {
 				return (T)blocks [0];
@@ -124,7 +122,7 @@ namespace SpaceEngineersScripts
 		{
 			if (level > logLevel)
 				return;
-			Echo (text);
+			Utils.Echo (text);
 			if (logScreenName == null || logScreenName.Length > 0) {
 				if (logBuffer.Split ('\n').Length > 10)
 					logBuffer = "";

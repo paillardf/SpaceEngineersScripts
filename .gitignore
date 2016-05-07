@@ -1,3 +1,7 @@
+bin/
+*.csproj
+obj/
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
@@ -41,3 +45,5 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+

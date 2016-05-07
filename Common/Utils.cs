@@ -9,7 +9,7 @@ namespace SpaceEngineersScripts
 	public class Utils
 	{
 
-
+		public static SpaceEngineersScripts.Script.LogDelegate Echo;
 
 
 		public class RegexResult
@@ -28,7 +28,7 @@ namespace SpaceEngineersScripts
 
 		static string REGEX_PARAM_EXTRACTOR = @"^([\w]+)?(?:\(((?>[^()]+|\((?<open>)|\)(?<-open>))*(?(open)(?!)))\))*$";
 
-		public List<KeyValuePair<System.Text.RegularExpressions.Capture, RegexResult>> ExtractParameters (string cmd, string separators, out string methodName, out string parameters)
+		private static List<KeyValuePair<System.Text.RegularExpressions.Capture, RegexResult>> ExtractParameters (string cmd, string separators, out string methodName, out string parameters)
 		{
 			List<string> tmp = RegexGroup (REGEX_PARAM_EXTRACTOR, cmd);
 
@@ -52,12 +52,12 @@ namespace SpaceEngineersScripts
 			}
 
 			if (Matches.Count == 0 && !cmd.Contains ("()") && cmd.Contains ("(")) {
-				Log ("Command can't be parse : " + cmd + " with : " + separators);
+				Echo ("Command can't be parse : " + cmd + " with : " + separators); 
 			}
 			return Matches;
 		}
 
-		List<string> ExtractFunctionParameters (string cmd, out string functionName)
+		public static List<string> ExtractFunctionParameters (string cmd, out string functionName)
 		{
 			string parametersString;
 			List<KeyValuePair<System.Text.RegularExpressions.Capture, RegexResult>> matches = ExtractParameters (cmd, ",", out functionName, out parametersString);
@@ -115,6 +115,63 @@ namespace SpaceEngineersScripts
 		{
 			return Math.Round (d, 2);
 		}
+
+
+		public static double DEFAULT_DOUBLE = -999999999;
+		public static Vector3D DEFAULT_VECTOR_3D = new Vector3D (DEFAULT_DOUBLE, DEFAULT_DOUBLE, DEFAULT_DOUBLE);
+
+
+		public static T CastString<T> (string operation)
+		{
+
+
+			if (typeof(T) == typeof(bool)) {
+				bool vbool;
+				if (bool.TryParse (operation, out vbool)) {
+					return (T)(object)vbool;
+				} else {
+					return default(T);
+				}
+			} else if (typeof(T) == typeof(float)) {
+				float vfloat;
+				if (float.TryParse (operation, out vfloat)) {
+					return (T)(object)vfloat;
+				} else {
+					return (T)(object)default(T);
+				}
+			} else if (typeof(T) == typeof(double)) {
+
+				double vdouble;
+				if (double.TryParse (operation, out vdouble)) {
+					return (T)(object)vdouble;
+				} else {
+					return (T)(object)DEFAULT_DOUBLE;
+				}
+			} else if (typeof(T) == typeof(int)) {
+				int vint;
+				if (int.TryParse (operation, out vint)) {
+					return (T)(object)vint;
+				} else {
+					return (T)(object)default(T);
+				}
+			} else if (typeof(T) == typeof(string)) {
+				return (T)(object)operation;
+			} else if (typeof(T) == typeof(Vector3D)) {
+				string methodName, parametersString;
+				var parameters = ExtractFunctionParameters (operation, out methodName);
+				if (methodName.Equals ("v") && parameters.Count == 3) {
+					Vector3D vect = new Vector3D (CastString<double> (parameters [0]), CastString<double> (parameters [1]), CastString<double> (parameters [2]));
+					return (T)(object)vect;
+				} else {
+					return (T)(object)DEFAULT_VECTOR_3D;
+				}
+			} else {
+				Echo ("can't convert value " + operation + " to type " + typeof(T));
+				return (T)(object)default(T);
+			}
+
+		}
+
 	}
 }
 

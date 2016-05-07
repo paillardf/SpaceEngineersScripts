@@ -12,10 +12,14 @@ namespace SpaceEngineersScripts.Autopilot
 	{
 		AutopilotScript script;
 
+		public Program(){
+			Utils.Echo = Echo;
+		}
+
 		public void Main (string argument)
 		{
 			if (script == null) {
-				script = new AutopilotScript (GridTerminalSystem, Me, Echo);
+				script = new AutopilotScript (GridTerminalSystem, Me);
 			}
 			script.CalculateDelta ();
 			script.Update (argument);

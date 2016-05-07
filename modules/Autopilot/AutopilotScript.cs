@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VRageMath;
-using VRage.Game.ModAPI.Ingame;
 using Sandbox.ModAPI.Interfaces;
 
 using SpaceEngineersScripts;
@@ -39,9 +38,9 @@ namespace SpaceEngineersScripts.Autopilot
 			if (arg == null || arg.Length < 1) {
 				return;
 			} else if (arg.Equals ("on")) {
-				ship.setAutopilotEnable(true);
+				ship.AutopilotEnable = true;
 			} else if (arg.Equals ("off")) {
-				ship.setAutopilotEnable(false);
+				ship.AutopilotEnable = false;
 			} else if (arg.StartsWith ("GPS:")) {
 				var vals = arg.Split (':');
 				String vector = Utils.VectorToString (new Vector3D (double.Parse (vals [2]), double.Parse (vals [3]), double.Parse (vals [4])));
@@ -61,7 +60,7 @@ namespace SpaceEngineersScripts.Autopilot
 						destination = ship.VectorPosition + ship.VectorForward * destination.GetDim (0) + ship.VectorLeft * destination.GetDim (1) + ship.VectorUp * destination.GetDim (2);
 					}
 
-					ship.moveTo (new Vector3D[]{destination}, 0);
+					ship.MoveTo (new Vector3D[]{destination}, 0);
 
 
 				} else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
@@ -72,7 +71,7 @@ namespace SpaceEngineersScripts.Autopilot
 						rollAngle = Utils.CastString<double> (functionArgs [1]);
 					}
 
-					ship.SetLookingDir (destination, rollAngle);
+					ship.LookingAt (destination, rollAngle);
 
 				} else if (functionName.StartsWith ("maxSpeed")) {
 					if (functionArgs.Count > 0) {

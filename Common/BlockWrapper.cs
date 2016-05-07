@@ -29,7 +29,7 @@ namespace SpaceEngineersScripts
 		}
 
 		// Direction Vectors
-		public Vector3D GetTransformedDirVector (Vector3I dirIndexVect)
+		private Vector3D TransformedDirVectorToGlobalBase (Vector3I dirIndexVect)
 		{
 			Vector3D fromPoint = RefGrid.GridIntegerToWorld (IndexOffset);
 			Vector3D toPoint = RefGrid.GridIntegerToWorld (IndexOffset - Vector3I.Transform (dirIndexVect, OrientOffset));
@@ -38,19 +38,31 @@ namespace SpaceEngineersScripts
 			return transformedVector;
 		}
 
+		public Vector3D TransformVectorToShipBase (Vector3D vect)
+		{
+			Vector3D forward = VectorForward;
+			Vector3D left = VectorForward;
+			Vector3D up = VectorForward;
+			MatrixD P = new MatrixD (forward.GetDim (0), forward.GetDim (1), forward.GetDim (2),
+				left.GetDim (0), left.GetDim (1), left.GetDim (2),
+				up.GetDim (0), up.GetDim (1), up.GetDim (2));
+			MatrixD Pinv = MatrixD.Invert (P);
+			return Vector3D.Transform (vect, Pinv);
+		}
+
 		public Vector3D VectorPosition     { get { return block.GetPosition (); } }
 
-		public Vector3D VectorRight     { get { return GetTransformedDirVector (new Vector3I (1, 0, 0)); } }
+		public Vector3D VectorRight     { get { return TransformedDirVectorToGlobalBase (new Vector3I (1, 0, 0)); } }
 
-		public Vector3D VectorUp        { get { return GetTransformedDirVector (new Vector3I (0, 1, 0)); } }
+		public Vector3D VectorUp        { get { return TransformedDirVectorToGlobalBase (new Vector3I (0, 1, 0)); } }
 
-		public Vector3D VectorBackward  { get { return GetTransformedDirVector (new Vector3I (0, 0, 1)); } }
+		public Vector3D VectorBackward  { get { return TransformedDirVectorToGlobalBase (new Vector3I (0, 0, 1)); } }
 
-		public Vector3D VectorLeft      { get { return GetTransformedDirVector (new Vector3I (-1, 0, 0)); } }
+		public Vector3D VectorLeft      { get { return TransformedDirVectorToGlobalBase (new Vector3I (-1, 0, 0)); } }
 
-		public Vector3D VectorDown      { get { return GetTransformedDirVector (new Vector3I (0, -1, 0)); } }
+		public Vector3D VectorDown      { get { return TransformedDirVectorToGlobalBase (new Vector3I (0, -1, 0)); } }
 
-		public Vector3D VectorForward   { get { return GetTransformedDirVector (new Vector3I (0, 0, -1)); } }
+		public Vector3D VectorForward   { get { return TransformedDirVectorToGlobalBase (new Vector3I (0, 0, -1)); } }
 
 		public string GetName ()
 		{

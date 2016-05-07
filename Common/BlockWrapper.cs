@@ -12,6 +12,7 @@ namespace SpaceEngineersScripts
 {
 	public class BlockWrapper
 	{
+
 		public IMyTerminalBlock block = null;
 		public StringMap map = null;
 		IMyCubeGrid RefGrid;

@@ -13,7 +13,7 @@ namespace SpaceEngineersScripts.Autopilot
 		AutopilotScript script;
 
 		public Program(){
-			Utils.Echo = Echo;
+			LogWrapper.Echo = Echo;
 		}
 
 		public void Main (string argument)
@@ -21,7 +21,6 @@ namespace SpaceEngineersScripts.Autopilot
 			if (script == null) {
 				script = new AutopilotScript (GridTerminalSystem, Me);
 			}
-			script.CalculateDelta ();
 			script.Update (argument);
 		}
 

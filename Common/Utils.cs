@@ -9,7 +9,6 @@ namespace SpaceEngineersScripts
 	public class Utils
 	{
 
-		public static SpaceEngineersScripts.Script.LogDelegate Echo;
 
 
 		public class RegexResult
@@ -52,7 +51,7 @@ namespace SpaceEngineersScripts
 			}
 
 			if (Matches.Count == 0 && !cmd.Contains ("()") && cmd.Contains ("(")) {
-				Echo ("Command can't be parse : " + cmd + " with : " + separators); 
+				LogWrapper.Echo ("Command can't be parse : " + cmd + " with : " + separators); 
 			}
 			return Matches;
 		}
@@ -157,7 +156,7 @@ namespace SpaceEngineersScripts
 			} else if (typeof(T) == typeof(string)) {
 				return (T)(object)operation;
 			} else if (typeof(T) == typeof(Vector3D)) {
-				string methodName, parametersString;
+				string methodName;
 				var parameters = ExtractFunctionParameters (operation, out methodName);
 				if (methodName.Equals ("v") && parameters.Count == 3) {
 					Vector3D vect = new Vector3D (CastString<double> (parameters [0]), CastString<double> (parameters [1]), CastString<double> (parameters [2]));
@@ -166,7 +165,7 @@ namespace SpaceEngineersScripts
 					return (T)(object)DEFAULT_VECTOR_3D;
 				}
 			} else {
-				Echo ("can't convert value " + operation + " to type " + typeof(T));
+				LogWrapper.Echo ("can't convert value " + operation + " to type " + typeof(T));
 				return (T)(object)default(T);
 			}
 

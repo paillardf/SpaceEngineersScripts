@@ -16,26 +16,15 @@ namespace SpaceEngineersScripts.Autopilot
 
 
 		string shipRemoteControlBlockName;
+		Ship ship;
 
-
-		//------------------------------------------------------------------------
-		//--------------------COMMAND --------------------
-		//------------------------------------------------------------------------
-		//   on (start autopilot)
-		//   off (stop autopilot)
-
-		bool autopilotEnable = false;
-
-
-
-
-		BlockWrapper ship;
-		public AutopilotScript(IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me):base (GridTerminalSystem, Me){
+		public AutopilotScript(IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me):base (new GridWrapper(GridTerminalSystem, Me)){
 			Initialize ();
 		}
 
-		public override void Update (string argument)
+		public override void Update (string argument) 
 		{
+			base.Update (argument);
 			if (Initialize ()) {
 				if(argument!=null && argument.Length>0)
 					TraitArgument (argument);
@@ -45,33 +34,18 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-
-
-
-
-		//------------------------------------------------------------------------
-		//--------------------START --------------------
-		//------------------------------------------------------------------------
-
-
-
-
 		void TraitArgument (string arg)
 		{
-			autopilotEnable = ship.map.Contains ("autoPilot");
 			if (arg == null || arg.Length < 1) {
 				return;
 			} else if (arg.Equals ("on")) {
-				autopilotEnable = true;
-				setGyrosOverride (autopilotEnable);
+				ship.setAutopilotEnable(true);
 			} else if (arg.Equals ("off")) {
-				autopilotEnable = false;
-				//TODO stopThrusters (GetBlocks<IMyThrust> ());
-				setGyrosOverride (autopilotEnable);
+				ship.setAutopilotEnable(false);
 			} else if (arg.StartsWith ("GPS:")) {
 				var vals = arg.Split (':');
 				String vector = Utils.VectorToString (new Vector3D (double.Parse (vals [2]), double.Parse (vals [3]), double.Parse (vals [4])));
-				Update ("go(" + vector + ")");
+				TraitArgument ("go(" + vector + ")");
 			} else {
 				String functionName;
 				List<string> functionArgs = Utils.ExtractFunctionParameters (arg, out functionName);
@@ -87,7 +61,7 @@ namespace SpaceEngineersScripts.Autopilot
 						destination = ship.VectorPosition + ship.VectorForward * destination.GetDim (0) + ship.VectorLeft * destination.GetDim (1) + ship.VectorUp * destination.GetDim (2);
 					}
 
-					SetDestination (destination);
+					ship.moveTo (new Vector3D[]{destination}, 0);
 
 
 				} else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
@@ -98,7 +72,7 @@ namespace SpaceEngineersScripts.Autopilot
 						rollAngle = Utils.CastString<double> (functionArgs [1]);
 					}
 
-					SetLookingDir (destination, rollAngle, functionName.StartsWith ("lookDir"), false);
+					ship.SetLookingDir (destination, rollAngle);
 
 				} else if (functionName.StartsWith ("maxSpeed")) {
 					if (functionArgs.Count > 0) {
@@ -111,19 +85,9 @@ namespace SpaceEngineersScripts.Autopilot
 
 					}
 
-				} else if (functionName.StartsWith ("lockLook")) {
-					bool v = false;
-					if (functionArgs.Count > 0) {
-						v = Utils.CastString<bool> (functionArgs [0]);
-					}
-					LockLook (v);
-				}
+				} 
 			}
-			if (autopilotEnable) {
-				ship.map.SetValue ("autoPilot", "1");
-			} else {
-				ship.map.Remove ("autoPilot");
-			}
+
 		}
 
 
@@ -131,42 +95,19 @@ namespace SpaceEngineersScripts.Autopilot
 
 		bool Initialize ()
 		{
-			//if (logLevel > LOG_NORMAL)
-			//		log = "";
-
-			bool success = true;
 			if (ship == null) {
 
-				IMyTerminalBlock terminalBlock;
-				if (GetBlocks<IMyCockpit> ().Count != 0) {
-					var shipBlocks = GetBlocks<IMyCockpit> ();
-					terminalBlock = shipBlocks [0];
-				} else if (shipRemoteControlBlockName != null) {
-					terminalBlock = GetBlocksWithName (shipRemoteControlBlockName) [0];
+				IMyRemoteControl terminalBlock;
+				if (shipRemoteControlBlockName != null) {
+					terminalBlock = (IMyRemoteControl) GridWrapper.GetBlocksWithName (shipRemoteControlBlockName) [0];
 				} else {
-					terminalBlock = GetNearest<IMyRemoteControl> (Me);
+					terminalBlock = GridWrapper.GetNearest<IMyRemoteControl> (GridWrapper.Terminal);
 				}
-				ship = new BlockWrapper (terminalBlock);
+				ship = new Ship (this, terminalBlock);
 				ship.Load ();
-				ship.map.SetValue ("autopilotBlock", Me.CustomName);
 			}
-
-			success = success && resetThrusters ();
-
-			if (!success) {
-				ship = null;
-			}
-			return success;
-
+			return true;
 		}
-
-
-
-
-
-
-
-
 	}
 
 

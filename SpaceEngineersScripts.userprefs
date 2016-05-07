@@ -1,16 +1,16 @@
 ﻿<Properties StartupItem="SpaceEngineersScripts.csproj" RefactoringSettings.EnableRefactorings="True">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="modules\SpaceOS\Support\SpaceOSTests.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="modules\Autopilot\Ship.cs">
     <Files>
-      <File FileName="Common\DisplayBuffer.cs" Line="1" Column="14" />
-      <File FileName="Common\DisplayBufferTests.cs" Line="5" Column="13" />
-      <File FileName="modules\SpaceOS\SpaceOS.cs" Line="11" Column="1" />
-      <File FileName="Common\StubGridTerminalSystem.cs" Line="9" Column="48" />
-      <File FileName="Common\StubTerminalBlock.cs" Line="9" Column="39" />
-      <File FileName="Common\StubTextPanel.cs" Line="90" Column="41" />
-      <File FileName="modules\SpaceOS\Support\SpaceOSTests.cs" Line="34" Column="1" />
-      <File FileName="modules\SpaceOS\Support\SpaceOSWrapper.cs" Line="8" Column="27" />
-      <File FileName="Common\BaseScript.cs" Line="14" Column="4" />
+      <File FileName="modules\SpaceOS\Support\SpaceOSTests.cs" Line="27" Column="56" />
+      <File FileName="modules\Autopilot\AutopilotScript.cs" Line="97" Column="18" />
+      <File FileName="modules\Autopilot\Program.cs" Line="16" Column="14" />
+      <File FileName="modules\Autopilot\Ship.cs" Line="60" Column="38" />
+      <File FileName="Common\Script.cs" Line="10" Column="9" />
+      <File FileName="Common\GridWrapper.cs" Line="73" Column="20" />
+      <File FileName="Common\BlockWrapper.cs" Line="15" Column="1" />
+      <File FileName="Common\LogWrapper.cs" Line="42" Column="9" />
+      <File FileName="Common\Utils.cs" Line="168" Column="16" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

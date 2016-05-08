@@ -99,6 +99,19 @@ namespace SpaceEngineersScripts
 		}
 
 
+		public static int indexOfVectorInList(List<Vector3D> list, Vector3D vector){
+
+			for (int i = 0; i < list.Count; i++) {
+				if (VectorEquals(list [i], vector))
+					return i;
+			}
+			return -1;
+		}
+
+		public static bool VectorEquals (Vector3D vector1, Vector3D vector2)
+		{
+			return Vector3D.Distance (vector1, vector2) < 0.01;
+		}
 
 		public static bool IsValueSmaller (double value, double objValue)
 		{

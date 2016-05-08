@@ -43,8 +43,8 @@ namespace SpaceEngineersScripts
 		public Vector3D TransformVectorToShipBase (Vector3D vect)
 		{
 			Vector3D forward = VectorForward;
-			Vector3D left = VectorForward;
-			Vector3D up = VectorForward;
+			Vector3D left = VectorLeft;
+			Vector3D up = VectorUp;
 			MatrixD P = new MatrixD (forward.GetDim (0), forward.GetDim (1), forward.GetDim (2),
 				left.GetDim (0), left.GetDim (1), left.GetDim (2),
 				up.GetDim (0), up.GetDim (1), up.GetDim (2));
@@ -84,5 +84,7 @@ namespace SpaceEngineersScripts
 		}
 
 	}
+	// end::content[]
+
 }
 

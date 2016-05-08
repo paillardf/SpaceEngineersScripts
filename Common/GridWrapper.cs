@@ -15,6 +15,7 @@ namespace SpaceEngineersScripts
 		public GridWrapper (IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me)
 		{
 			this.Grid = GridTerminalSystem;
+			this.Terminal = Me;
 		}
 
 

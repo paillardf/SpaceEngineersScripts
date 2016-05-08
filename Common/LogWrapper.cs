@@ -8,9 +8,7 @@ namespace SpaceEngineersScripts
 	public class LogWrapper
 	{
 
-		public delegate void LogDelegate(string message);
-
-		public static LogDelegate Echo;
+		public static Action<String> Echo;
 
 		protected int logLevel = LOG_NORMAL;
 

@@ -16,8 +16,8 @@ namespace SpaceEngineersScripts.Autopilot
 	public class AutopilotScript : Script
 	{
 
-		string timerblockName;
-		string shipRemoteControlBlockName;
+		string timerblockName = "Timer Block Clock";
+		string shipRemoteControlBlockName = "Remote Control Front";
 		Ship ship;
 
 		public AutopilotScript(IMyGridTerminalSystem GridTerminalSystem, IMyTerminalBlock Me):base (new GridWrapper(GridTerminalSystem, Me)){
@@ -27,6 +27,8 @@ namespace SpaceEngineersScripts.Autopilot
 		public override void Update (string argument) 
 		{
 			base.Update (argument);
+			Logger.Log ("delta:"+this.deltaMs);
+
 			if (Initialize ()) {
 				if(argument!=null && argument.Length>0)
 					TraitArgument (argument);
@@ -79,14 +81,14 @@ namespace SpaceEngineersScripts.Autopilot
 
 					ship.LookingAt (destination, rollAngle,functionName.StartsWith ("lookDir"));
 
-				} else if (functionName.StartsWith ("maxSpeed")) {
+				} else if (functionName.StartsWith ("precise")) {
 					if (functionArgs.Count > 0) {
 
-						double maxVal = Utils.CastString<double> (functionArgs [0]);
+						bool precise = Utils.CastString<bool> (functionArgs [0]);
 
-						ship.MaxSpeed = maxVal;
+						ship.PreciseMode = precise;
 					} else {
-						ship.map.Remove ("maxSpeed");
+						ship.PreciseMode = true;
 
 					}
 
@@ -100,21 +102,21 @@ namespace SpaceEngineersScripts.Autopilot
 
 		bool Initialize ()
 		{
-			if (ship == null) {
 
+			if (ship == null) {
 				IMyRemoteControl terminalBlock;
 				if (shipRemoteControlBlockName != null) {
-					terminalBlock = (IMyRemoteControl) GridWrapper.GetBlocksWithName (shipRemoteControlBlockName) [0];
+					terminalBlock = (IMyRemoteControl) GridWrapper.GetBlocksWithName (shipRemoteControlBlockName, "Can 't find "+shipRemoteControlBlockName) [0];
+
 				} else {
 					terminalBlock = GridWrapper.GetNearest<IMyRemoteControl> (GridWrapper.Terminal);
 				}
 
 
-				if (shipRemoteControlBlockName == null) {
+				if (terminalBlock == null) {
 					Logger.Log ("Can't get the ship remote control block. Please correct the shipRemoteControlBlockName");
 					return false;
 				}
-
 
 				ship = new Ship (this, terminalBlock);
 				ship.Load ();
@@ -122,7 +124,7 @@ namespace SpaceEngineersScripts.Autopilot
 
 			if (timerBlock == null) {
 				if (timerblockName != null) {
-					timerBlock = GridWrapper.GetBlocksWithName (timerblockName, "Could not find a timer named " + timerblockName) [0];
+					timerBlock = GridWrapper.GetBlocksWithName (timerblockName, "Can't find a timer named " + timerblockName) [0];
 				}
 
 				if (timerBlock == null) {
@@ -130,7 +132,6 @@ namespace SpaceEngineersScripts.Autopilot
 					return false;
 				}
 			}
-
 			return true;
 		}
 

@@ -25,9 +25,13 @@ namespace SpaceEngineersScripts.Autopilot
 		List<Vector3D> orientation;
 		IMyRemoteControl[] rcBlocks = new IMyRemoteControl[6];
 
+		IMyTextPanel infosScreen;
+
 		AutopilotScript script;
 
 		List<IMyTerminalBlock> gyrosBlocks;
+
+		List<IMyTerminalBlock> connectorBlocks;
 
 		public Ship (AutopilotScript script,IMyRemoteControl block):base(block)
 		{
@@ -35,36 +39,75 @@ namespace SpaceEngineersScripts.Autopilot
 			this.GridWrapper = script.GridWrapper;
 			this.script = script;
 			rcBlocks [IFRONT] = block;
-			orientation = new List<Vector3D>{VectorForward, VectorBackward, VectorLeft, VectorRight, VectorUp, VectorDown};
-			rcBlocks [IFRONT] = block;
+			infosScreen = (IMyTextPanel)GridWrapper.GetBlocksWithName ("PPilot", "can't find PPilot panel") [0];
 
+			orientation = new List<Vector3D>{VectorForward, VectorBackward, VectorLeft, VectorRight, VectorUp, VectorDown};
 			var rcs = GridWrapper.GetBlocks<IMyRemoteControl> ();
 			for (int i = 0; i < rcs.Count; i++) {
 				if (rcs [i].NumberInGrid != block.NumberInGrid) {
-					int index = orientation.IndexOf (new BlockWrapper (rcs [i]).VectorForward);
-						if(rcBlocks[index] == null){
-							rcBlocks [index] = (IMyRemoteControl) rcs [i];
-						}
+					Vector3D forward = new BlockWrapper (rcs [i]).VectorForward;
+					int index = Utils.indexOfVectorInList (orientation, new BlockWrapper (rcs [i]).VectorForward);
+					if(rcBlocks[index] == null && i>=0){
+						rcBlocks [index] = (IMyRemoteControl) rcs [i];
+					}
 				}
 			}
+
+			connectorBlocks = GridWrapper.GetBlocks<IMyShipConnector> ();
+			for (int i = 0; i < connectorBlocks.Count; i++) {
+				bool connected =((IMyShipConnector)connectorBlocks [i]).IsConnected;
+				if (connected) {
+					BlockWrapper wrapper = new BlockWrapper (connectorBlocks [i]);
+					int index = Utils.indexOfVectorInList (orientation, new BlockWrapper (rcs [i]).VectorForward);
+					if(rcBlocks[index] != null && i>=0){
+						rcBlocks [index] = (IMyRemoteControl) rcs [i];
+
+					}
+				}
+			}
+
+
 
 			gyrosBlocks = GridWrapper.GetBlocks<IMyGyro> ();
 
 		}
 
+
+
 		public bool Update ()
 		{
-			if (!AutopilotEnable)
-				return false;
-
+			bool runFast = false;
+			runFast = !IsLookingDir ();
 			RotateShip ();
+			ShowInfos ();
+			return runFast && AutopilotEnable;
+		}	
+		Vector3D shipDeplacement;
+		double[] distancesToStop = new double[6];
+		
 
-			if (!IsLookingDir ()) {
-				return true;
-			}
 
-			return false;
-		}			
+		public void ShowInfos ()
+		{
+
+				string t =
+					"   | " + Utils.RoundD (shipYawAngle) + "°\n" +
+				"   | " + Utils.RoundD (shipDeplacement.GetDim (2)) + "m\n" +
+					"   | " + Utils.RoundD (distancesToStop [2]) + "m\n" +
+					"   |      /  " + Utils.RoundD (shipRollAngle) + "°\n" +
+					"   |    /    " + Utils.RoundD (shipDeplacement.GetDim (0)) + "m\n" +
+					"   |  /      " + Utils.RoundD (distancesToStop [0]) + "m\n" +
+					"   |/_ _ _ _ _ _ _ _ _ _ \n" +
+					"             " + Utils.RoundD (-shipPitchAngle) + "°\n" +
+					"             " + Utils.RoundD (-shipDeplacement.GetDim (1)) + "m\n" +
+					"             " + Utils.RoundD (distancesToStop [1]) + "m\n" +
+					"\n";
+
+			infosScreen.GetProperty ("FontColor").AsColor ().SetValue (infosScreen, AutopilotEnable ? Color.Green : Color.Red);
+			LogWrapper.WriteOnScreen (infosScreen, t);
+
+
+		}
 
 		public bool AutopilotEnable
 		{
@@ -111,20 +154,18 @@ namespace SpaceEngineersScripts.Autopilot
 		{
 			Vector3D localDest = this.LookPoint;
 			if (localDest.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				shipYawAngle = 0;
-				shipRollAngle = 0;
-				shipPitchAngle = 0;
+				
 				return true;
 			}
 			double rotationRoll = this.RollAngle;
+
+			Logger.Log ("localDest" + Utils.VectorToStringRound (localDest));
 
 			Vector3D yawVect = Vector3D.Multiply (localDest, new Vector3D (1, 1, 0));
 			yawVect.Normalize ();
 			double yawAngle = Math.Acos (yawVect.GetDim (0)) * 180 / Math.PI;
 			if (yawVect.GetDim (1) > 0)
 				yawAngle = -yawAngle;
-
-
 			Vector3D pitchVect = Vector3D.Multiply (localDest, new Vector3D (1, 0, 1));
 			pitchVect.Normalize ();
 			double pitchAngle = Math.Acos (pitchVect.GetDim (0)) * 180 / Math.PI;
@@ -165,7 +206,10 @@ namespace SpaceEngineersScripts.Autopilot
 
 			bool isLookingDir = preciseYawStop && precisePitchStop && preciseRollStop;
 			if (isLookingDir) {
-				LookPoint = Utils.DEFAULT_VECTOR_3D;
+				this.LookPoint = Utils.DEFAULT_VECTOR_3D;
+				shipYawAngle = 0;
+				shipRollAngle = 0;
+				shipPitchAngle = 0;
 			}
 
 			return isLookingDir;
@@ -180,7 +224,9 @@ namespace SpaceEngineersScripts.Autopilot
 
 		private int MoveOrientation   { 
 			get {
-				return int.Parse (map.GetValue ("orientation"));
+				int moveO = 0;
+				 int.TryParse (map.GetValue ("orientation"), out moveO);
+				return moveO;
 			}
 			set {
 				map.SetValue ("orientation", value+"");
@@ -203,7 +249,8 @@ namespace SpaceEngineersScripts.Autopilot
 
 		private bool LookRelative   { 
 			get {
-				return bool.Parse (map.GetValue ("relative"));
+				bool relative = false;
+				return bool.TryParse (map.GetValue ("relative"), out relative);
 			}
 			set {
 				map.SetValue ("relative", value+"");
@@ -212,15 +259,13 @@ namespace SpaceEngineersScripts.Autopilot
 
 		private Vector3D LookPoint   { 
 			get {
-				Vector3D lookPoint = Utils.DEFAULT_VECTOR_3D;
-				Vector3D.TryParse (map.GetValue ("look"), out lookPoint);
-				if(lookPoint.Equals(Utils.DEFAULT_DOUBLE))
+				Vector3D lookPoint = Utils.CastString<Vector3D> (map.GetValue ("look"));
+				if (lookPoint.Equals (Utils.DEFAULT_VECTOR_3D))
 					return lookPoint;
-				Vector3D localDest = TransformVectorToShipBase (lookPoint - this.VectorPosition);
 				if (this.LookRelative) {
-					localDest = TransformVectorToShipBase (lookPoint);
+					lookPoint = TransformVectorToShipBase (lookPoint);
 				}
-				return localDest;
+				return lookPoint;
 			}
 			set {
 				map.SetValue ("look", Utils.VectorToString(value));
@@ -229,8 +274,10 @@ namespace SpaceEngineersScripts.Autopilot
 
 		private Vector3D Destination   { 
 			get {
-				Vector3D destination = CurrentPosition;
-				Vector3D.TryParse (map.GetValue ("dest"), out destination);
+				Vector3D destination = Utils.CastString<Vector3D> (map.GetValue ("dest"));
+				if (destination.Equals (Utils.DEFAULT_VECTOR_3D)) {
+					destination = CurrentPosition;
+				}
 				return destination;
 			}
 			set {
@@ -238,14 +285,14 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		public double MaxSpeed {
+		public bool PreciseMode {
 			get {
-				double maxSpeed = Utils.DEFAULT_DOUBLE;
-				double.TryParse (map.GetValue ("maxSpeed"), out maxSpeed);
-				return maxSpeed;
+				bool precise = false;
+				bool.TryParse (map.GetValue ("precise"), out precise);
+				return precise;
 			}
 			set{
-				map.SetValue ("maxSpeed", ""+value);
+				map.SetValue ("precise", ""+value);
 			}
 		}
 

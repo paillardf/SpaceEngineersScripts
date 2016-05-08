@@ -8,8 +8,11 @@ using VRage.Game.ModAPI.Ingame;
 
 namespace SpaceEngineersScripts.Autopilot
 {
+	
 	public class Program : SEScriptStruct ,  BaseScriptMethods
 	{
+		// tag::content[]
+
 		AutopilotScript script;
 
 		public Program(){
@@ -27,6 +30,9 @@ namespace SpaceEngineersScripts.Autopilot
 		public void Save ()
 		{
 		}
+		// end::content[]
+
+
 
 	}
 

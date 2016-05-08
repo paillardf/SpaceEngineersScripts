@@ -5,6 +5,8 @@ using VRageMath;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
+
 	public class GridWrapper
 	{
 		public IMyGridTerminalSystem Grid;
@@ -90,5 +92,7 @@ namespace SpaceEngineersScripts
 			return best;
 		}
 	}
+	// end::content[]
+
 }
 

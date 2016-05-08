@@ -6,6 +6,8 @@ using Sandbox.ModAPI.Ingame;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
+
 	public class Utils
 	{
 
@@ -98,7 +100,10 @@ namespace SpaceEngineersScripts
 
 
 
-
+		public static bool IsValueSmaller (double value, double objValue)
+		{
+			return Math.Abs (value) < Math.Abs (objValue);
+		}
 
 		public static string VectorToString (Vector3D vector)
 		{
@@ -172,5 +177,7 @@ namespace SpaceEngineersScripts
 		}
 
 	}
+	// end::content[]
+
 }
 

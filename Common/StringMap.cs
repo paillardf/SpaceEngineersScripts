@@ -10,6 +10,7 @@ using System.Collections.Generic;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
 
 	public class StringMap
 	{
@@ -96,6 +97,8 @@ namespace SpaceEngineersScripts
 			return "[" + result + "]";
 		}
 	}
+	// end::content[]
+
 
 }
 

@@ -1,0 +1,8 @@
+:filePath: ../modules/Autopilot/
+
+{
+include::{filePath}Program.cs[tags=content]
+include::{filePath}AutopilotScript.cs[tags=content]
+include::{filePath}Ship.cs[tags=content]
+include::common.adoc[]
+}

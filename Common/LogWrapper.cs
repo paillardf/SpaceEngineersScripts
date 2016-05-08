@@ -3,6 +3,8 @@ using Sandbox.ModAPI.Ingame;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
+
 	public class LogWrapper
 	{
 
@@ -63,5 +65,7 @@ namespace SpaceEngineersScripts
 
 		}
 	}
+	// end::content[]
+
 }
 

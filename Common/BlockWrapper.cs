@@ -10,6 +10,8 @@ using System.Collections.Generic;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
+
 	public class BlockWrapper
 	{
 

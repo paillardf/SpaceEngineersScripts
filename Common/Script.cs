@@ -5,6 +5,8 @@ using VRageMath;
 
 namespace SpaceEngineersScripts
 {
+	// tag::content[]
+
 	public abstract class Script
 	{
 		public GridWrapper GridWrapper;
@@ -14,6 +16,7 @@ namespace SpaceEngineersScripts
 		protected long clockStart = DateTime.Now.Ticks;
 
 		public long deltaMs;
+		public long minDelta = 100;
 
 		public LogWrapper Logger;
 
@@ -25,18 +28,28 @@ namespace SpaceEngineersScripts
 		}
 
 		public virtual void Update (String argument){
-			CalculateDelta ();
+			if (!CalculateDelta ()) {
+				return;
+			}
 		}
 
-		public void CalculateDelta ()
+		public bool CalculateDelta ()
 		{
-			deltaMs = (DateTime.Now.Ticks - clockStart) / 10000;
+
+			long tmpDeltaMs = (DateTime.Now.Ticks - clockStart) / 10000;
+			if (tmpDeltaMs < minDelta) {
+				return false;
+			}
+			deltaMs = tmpDeltaMs;
 			clockStart = DateTime.Now.Ticks;
+			return true;
 		}
 
 
 
 
 	}
+	// end::content[]
+
 }
 

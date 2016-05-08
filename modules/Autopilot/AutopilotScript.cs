@@ -6,14 +6,17 @@ using System.Text;
 using VRageMath;
 using Sandbox.ModAPI.Interfaces;
 
+
 using SpaceEngineersScripts;
 
 namespace SpaceEngineersScripts.Autopilot
 {
+
+	// tag::content[]
 	public class AutopilotScript : Script
 	{
 
-
+		string timerblockName;
 		string shipRemoteControlBlockName;
 		Ship ship;
 
@@ -28,7 +31,10 @@ namespace SpaceEngineersScripts.Autopilot
 				if(argument!=null && argument.Length>0)
 					TraitArgument (argument);
 
-
+				bool needFastUpdate = ship.Update ();
+				if (needFastUpdate) {
+					Heartbeat ();
+				}
 				ship.Save ();
 			}
 		}
@@ -65,20 +71,20 @@ namespace SpaceEngineersScripts.Autopilot
 
 				} else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
 
-					double rollAngle = 10000;
+					double rollAngle = Utils.DEFAULT_DOUBLE;
 					var destination = Utils.CastString<Vector3D> (functionArgs [0]);
 					if (functionArgs.Count > 1) {
 						rollAngle = Utils.CastString<double> (functionArgs [1]);
 					}
 
-					ship.LookingAt (destination, rollAngle);
+					ship.LookingAt (destination, rollAngle,functionName.StartsWith ("lookDir"));
 
 				} else if (functionName.StartsWith ("maxSpeed")) {
 					if (functionArgs.Count > 0) {
 
 						double maxVal = Utils.CastString<double> (functionArgs [0]);
 
-						ship.map.SetValue ("maxSpeed", maxVal + "");
+						ship.MaxSpeed = maxVal;
 					} else {
 						ship.map.Remove ("maxSpeed");
 
@@ -102,12 +108,43 @@ namespace SpaceEngineersScripts.Autopilot
 				} else {
 					terminalBlock = GridWrapper.GetNearest<IMyRemoteControl> (GridWrapper.Terminal);
 				}
+
+
+				if (shipRemoteControlBlockName == null) {
+					Logger.Log ("Can't get the ship remote control block. Please correct the shipRemoteControlBlockName");
+					return false;
+				}
+
+
 				ship = new Ship (this, terminalBlock);
 				ship.Load ();
 			}
+
+			if (timerBlock == null) {
+				if (timerblockName != null) {
+					timerBlock = GridWrapper.GetBlocksWithName (timerblockName, "Could not find a timer named " + timerblockName) [0];
+				}
+
+				if (timerBlock == null) {
+					Logger.Log ("Can't get the program timer block. Please correct the timerblockName");
+					return false;
+				}
+			}
+
 			return true;
 		}
+
+
+
+		IMyTerminalBlock timerBlock;
+		void Heartbeat ()
+		{
+
+			timerBlock.ApplyAction ("TriggerNow");
+
+		}
 	}
+	// end::content[]
 
 
 }

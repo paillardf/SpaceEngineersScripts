@@ -60,7 +60,7 @@ namespace SpaceEngineersScripts.Autopilot
 		public bool Update ()
 		{
 			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				dock ();
+				Dock ();
 			}
 
 			bool runFast = false;
@@ -100,7 +100,37 @@ namespace SpaceEngineersScripts.Autopilot
 		int dockingForward;
 		int dockingBackward;
 
-		public void dock(){
+		public void UnDock(){
+			var connector = getConnector ();
+			if (connector == null) {
+				return;
+			}
+
+			if ((connector.block as IMyShipConnector).IsConnected) {
+				connector.ApplyAction("OnOff_Off");
+				MoveTo (new Vector3D[]{connector.VectorForward * 8}, dockingBackward);
+			}
+
+		}
+
+		private BlockWrapper getConnector(){
+			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
+			if (connectors.Count == 0) {
+				Logger.Log("Can't dock without any connector");
+				return null;
+			}
+			var connector = new BlockWrapper (connectors [0]);
+			dockingForward = Utils.indexOfVectorInList (orientation, connector.VectorForward);
+			dockingBackward = Utils.indexOfVectorInList (orientation, connector.VectorBackward);
+
+			if(dockingForward<0 || dockingBackward <0 ||  rcBlocks[dockingForward] == null || rcBlocks[dockingBackward] == null){
+				Logger.Log ("RemoteController not fount in the 2 directions of your connector");
+				return null;
+			}
+
+			return connector;
+		}
+		public void Dock(){
 			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)) {
 				if (IsArrived () && IsLookingDir ()) {
 					MoveTo (new Vector3D[]{dockingPosition}, dockingForward);
@@ -114,20 +144,19 @@ namespace SpaceEngineersScripts.Autopilot
 				}
 
 			}
-
-			var sensors = GridWrapper.GetBlocks<IMySensorBlock> ();
-
-			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
-			if (connectors.Count == 0) {
-				Logger.Log("Can't dock without any connector");
+				
+			var connector = getConnector ();
+			if (connector == null) {
 				return;
 			}
-			var connector = connectors [0];
+
+			connector.ApplyAction("OnOff_On");
 			IMyShipConnector stationConnector = null;
+			var sensors = GridWrapper.GetBlocks<IMySensorBlock> ();
 			for (int i = 0; i < sensors.Count; i++) {
 				var detected = ((IMySensorBlock)sensors [i]).LastDetectedEntity;
 				if (detected != null && detected is IMyCubeGrid)  {
-					CubeGridWrapper wrapper = new CubeGridWrapper (detected as IMyCubeGrid, connector);
+					CubeGridWrapper wrapper = new CubeGridWrapper (detected as IMyCubeGrid, connector.block);
 					stationConnector = wrapper.GetNearest<IMyShipConnector> ();
 					if (stationConnector != null) {
 						break;
@@ -140,22 +169,13 @@ namespace SpaceEngineersScripts.Autopilot
 				Logger.Log("No station connector detected");
 				return;
 			}
-
-
-			dockingForward = Utils.indexOfVectorInList (orientation, new BlockWrapper (connectors[0]).VectorForward);
-			dockingBackward = Utils.indexOfVectorInList (orientation, new BlockWrapper (connectors[0]).VectorBackward);
-
-			if(dockingForward<0 || dockingBackward <0 ||  rcBlocks[dockingForward] == null || rcBlocks[dockingBackward] == null){
-				Logger.Log ("RemoteController not fount in the 2 directions of your connector");
-				return;
-			}
 			
 
 			BlockWrapper stationConnectorWrapper = new BlockWrapper (stationConnector);
 
 
 
-			Vector3D alignPosition = stationConnector.GetPosition () + (stationConnectorWrapper.VectorForward * 10) - new Vector3D( (rcBlocks[0].Position + stationConnectorWrapper.block.Position) );
+			Vector3D alignPosition = stationConnector.GetPosition () + (stationConnectorWrapper.VectorForward * 10) - new Vector3D( (rcBlocks[0].Position + connector.block.Position) );
 
 			Vector3D lookDir = stationConnectorWrapper.VectorLeft;
 
@@ -163,7 +183,7 @@ namespace SpaceEngineersScripts.Autopilot
 			MoveTo (new Vector3D[]{alignPosition}, 0);
 			LookingAt (lookDir, 100000, true);
 
-			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward - new Vector3D(rcBlocks [dockingForward].Position + stationConnectorWrapper.block.Position);
+			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward - new Vector3D(rcBlocks [dockingForward].Position + connector.block.Position);
 
 			
 		}

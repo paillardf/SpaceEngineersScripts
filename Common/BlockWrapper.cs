@@ -66,6 +66,18 @@ namespace SpaceEngineersScripts
 
 		public Vector3D VectorForward   { get { return TransformedDirVectorToGlobalBase (new Vector3I (0, 0, -1)); } }
 
+
+		public void ApplyAction(string actionName)
+		{
+			if (block.GetActionWithName(actionName) == null)
+			{
+				LogWrapper.Echo(block.CustomName + " cannot " + actionName);
+				return;
+			}
+			block.ApplyAction(actionName);
+		}
+
+
 		public string GetName ()
 		{
 			List<string> matches = Utils.Regex (@"([^\[.]+)\b( *\[.*\])", block.CustomName);

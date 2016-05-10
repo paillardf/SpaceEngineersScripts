@@ -17,7 +17,7 @@ namespace SpaceEngineersScripts
 
 		public IMyTerminalBlock block = null;
 		public StringMap map = null;
-		IMyCubeGrid RefGrid;
+		public IMyCubeGrid RefGrid;
 		Vector3I IndexOffset;
 		public Quaternion OrientOffset;
 

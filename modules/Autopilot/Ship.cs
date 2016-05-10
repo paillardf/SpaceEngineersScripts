@@ -31,6 +31,8 @@ namespace SpaceEngineersScripts.Autopilot
 
 		List<IMyTerminalBlock> gyrosBlocks;
 
+		BlockWrapper connector;
+
 		public Ship (AutopilotScript script,IMyRemoteControl block):base(block)
 		{
 			this.Logger = script.Logger;
@@ -50,8 +52,20 @@ namespace SpaceEngineersScripts.Autopilot
 					}
 				}
 			}
-
 			gyrosBlocks = GridWrapper.GetBlocks<IMyGyro> ();
+
+			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
+			if (connectors.Count > 0) {
+				connector = new BlockWrapper (connectors [0]);
+				dockingForward = Utils.indexOfVectorInList (orientation, connector.VectorForward);
+				dockingBackward = Utils.indexOfVectorInList (orientation, connector.VectorBackward);
+
+				if (dockingForward < 0 || dockingBackward < 0 || rcBlocks [dockingForward] == null || rcBlocks [dockingBackward] == null) {
+					throw new Exception ("RemoteControllers not fount in the forward and backward directions of your connector " + connector.GetName ());
+				}
+			}
+
+
 
 		}
 
@@ -64,10 +78,10 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 
 			bool runFast = false;
-			runFast = !IsLookingDir ();
+			runFast = !CalculateLookingDir ();
 			RotateShip ();
 			ShowInfos ();
-			return runFast && AutopilotEnable && IsArrived();
+			return runFast && AutopilotEnable;// && IsArrived();
 		}	
 		Vector3D shipDeplacement;
 		double[] distancesToStop = new double[6];
@@ -97,59 +111,42 @@ namespace SpaceEngineersScripts.Autopilot
 		}
 
 		Vector3D dockingPosition = Utils.DEFAULT_VECTOR_3D;
+		Vector3D dockingLookDir = Utils.DEFAULT_VECTOR_3D;
 		int dockingForward;
 		int dockingBackward;
 
 		public void UnDock(){
-			var connector = getConnector ();
 			if (connector == null) {
+				Logger.Log ("Can't dock without any connector");
 				return;
 			}
 
-			if ((connector.block as IMyShipConnector).IsConnected) {
-				connector.ApplyAction("OnOff_Off");
-				MoveTo (new Vector3D[]{connector.VectorForward * 8}, dockingBackward);
-			}
-
+			connector.ApplyAction("OnOff_Off");
+			MoveTo (new Vector3D[]{connector.VectorForward * 8}, dockingBackward);
 		}
 
-		private BlockWrapper getConnector(){
-			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
-			if (connectors.Count == 0) {
-				Logger.Log("Can't dock without any connector");
-				return null;
-			}
-			var connector = new BlockWrapper (connectors [0]);
-			dockingForward = Utils.indexOfVectorInList (orientation, connector.VectorForward);
-			dockingBackward = Utils.indexOfVectorInList (orientation, connector.VectorBackward);
 
-			if(dockingForward<0 || dockingBackward <0 ||  rcBlocks[dockingForward] == null || rcBlocks[dockingBackward] == null){
-				Logger.Log ("RemoteController not fount in the 2 directions of your connector");
-				return null;
-			}
-
-			return connector;
-		}
 		public void Dock(){
-			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				if (IsArrived () && IsLookingDir ()) {
+			if (connector == null) {
+				Logger.Log ("Can't dock without any connector");
+				return;
+			}
+
+			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)&&!dockingPosition.Equals (-Utils.DEFAULT_VECTOR_3D)) {
+				if (Arrived) {
 					MoveTo (new Vector3D[]{dockingPosition}, dockingForward);
 					dockingPosition = -Utils.DEFAULT_VECTOR_3D;
 				}
 				return;
 			}else if(dockingPosition.Equals (-Utils.DEFAULT_VECTOR_3D)){
-				if ((GridWrapper.GetBlocks<IMyShipConnector> () [0] as IMyShipConnector).IsConnected) {
-					rcBlocks [dockingForward].SetAutoPilotEnabled (false);
+				if (Arrived) {
+					connector.block.ApplyAction("SwitchLock");
 					dockingPosition = Utils.DEFAULT_VECTOR_3D;
 				}
+				return;
 
 			}
 				
-			var connector = getConnector ();
-			if (connector == null) {
-				return;
-			}
-
 			connector.ApplyAction("OnOff_On");
 			IMyShipConnector stationConnector = null;
 			var sensors = GridWrapper.GetBlocks<IMySensorBlock> ();
@@ -175,15 +172,14 @@ namespace SpaceEngineersScripts.Autopilot
 
 
 
-			Vector3D alignPosition = stationConnector.GetPosition () + (stationConnectorWrapper.VectorForward * 10) - new Vector3D( (rcBlocks[0].Position + connector.block.Position) );
+			Vector3D alignPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 10// + connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks[0].Position) - newrcBlocks[0].RefGrid.GetPosition();
 
 			Vector3D lookDir = stationConnectorWrapper.VectorLeft;
 
 
 			MoveTo (new Vector3D[]{alignPosition}, 0);
-			LookingAt (lookDir, 100000, true);
-
-			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward - new Vector3D(rcBlocks [dockingForward].Position + connector.block.Position);
+			dockingLookDir = lookDir;
+			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward*2 //+ connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks [dockingForward].Position)- rcBlocks [dockingForward].RefGrid.GetPosition();
 
 			
 		}
@@ -200,7 +196,7 @@ namespace SpaceEngineersScripts.Autopilot
 				for (int i = 0; i < gyrosBlocks.Count; i++) {
 					gyrosBlocks [i].GetProperty ("Override").AsBool ().SetValue (gyrosBlocks [i], value);
 				}
-				rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (!IsArrived() && value);
+				rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (!Arrived && value);
 
 			}
 		}
@@ -212,6 +208,7 @@ namespace SpaceEngineersScripts.Autopilot
 				Logger.Log("can't move no remoteControl block available in this direction");
 				return;
 			}
+			Arrived = false;
 			rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (false);
 			controlBlock.ClearWaypoints ();
 			this.MoveOrientation = sens;
@@ -226,22 +223,19 @@ namespace SpaceEngineersScripts.Autopilot
 		public void LookingAt (Vector3D lookAt, double rollAngle, bool relative)
 		{
 			this.LookPoint = lookAt;
-			this.RollAngle = RollAngle;
+			this.RollAngle = rollAngle;
 			this.LookRelative = relative;
 		}
 
+		bool lookingDir;
 
-
-		bool IsLookingDir ()
-		{
+		bool CalculateLookingDir (){
 			Vector3D localDest = this.LookPoint;
 			if (localDest.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				
+				lookingDir = true;
 				return true;
 			}
 			double rotationRoll = this.RollAngle;
-
-			Logger.Log ("localDest" + Utils.VectorToStringRound (localDest));
 
 			Vector3D yawVect = Vector3D.Multiply (localDest, new Vector3D (1, 1, 0));
 			yawVect.Normalize ();
@@ -293,8 +287,14 @@ namespace SpaceEngineersScripts.Autopilot
 				shipRollAngle = 0;
 				shipPitchAngle = 0;
 			}
+			lookingDir = isLookingDir;
 
 			return isLookingDir;
+		}
+
+		bool IsLookingDir ()
+		{
+			return lookingDir;	
 		}
 
 
@@ -378,9 +378,19 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		public bool IsArrived ()
+		public bool Arrived
 		{
-			return Vector3D.Distance (Destination, CurrentPosition) < 0.3f;
+			get{
+				bool arrived = Vector3D.Distance (Destination, CurrentPosition) < 0.4f;
+				bool wasArrive = true;
+				bool.TryParse (map.GetValue ("arrived"), out wasArrive);
+				this.Arrived = wasArrive || arrived; 
+				return wasArrive || arrived;
+			}
+			set{
+				map.SetValue ("arrived", ""+value);
+			}
+
 		}
 
 

@@ -32,11 +32,17 @@ namespace SpaceEngineersScripts
 			int ymax = cubeGrid.Max.AxisValue(Base6Directions.Axis.UpDown);
 			int zmax = cubeGrid.Max.AxisValue(Base6Directions.Axis.ForwardBackward);
 
+			LogWrapper.Echo ("xmin" + xmin + " ymin" + ymin + " xmax" + xmax + " ymax" + ymax);
+
 			for(int xc = xmin;xc<=xmax;xc++)
 				for(int yc = ymin;yc<=ymax;yc++)
 					for(int zc = zmin;zc<=zmax;zc++)
 					{
 						IMySlimBlock block = cubeGrid.GetCubeBlock(new Vector3I(xc, yc, zc));
+						if (block != null) {
+							LogWrapper.Echo (block.FatBlock.ToString());
+						}
+
 						if(block != null && block.FatBlock is T)
 						{
 							//check if it's new.

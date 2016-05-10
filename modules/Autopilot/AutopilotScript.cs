@@ -29,6 +29,7 @@ namespace SpaceEngineersScripts.Autopilot
 			base.Update (argument);
 			Logger.Log ("delta:"+this.deltaMs);
 
+			var blocks = GridWrapper.GetBlocks<IMyTerminalBlock> ();
 			if (Initialize ()) {
 				if(argument!=null && argument.Length>0)
 					TraitArgument (argument);
@@ -81,7 +82,14 @@ namespace SpaceEngineersScripts.Autopilot
 
 					ship.LookingAt (destination, rollAngle,functionName.StartsWith ("lookDir"));
 
-				} else if (functionName.StartsWith ("precise")) {
+				} else if (functionName.StartsWith ("dock")) {
+					ship.Dock ();
+
+				}  else if (functionName.StartsWith ("undock")) {
+					
+					ship.UnDock ();
+
+				}else if (functionName.StartsWith ("precise")) {
 					if (functionArgs.Count > 0) {
 
 						bool precise = Utils.CastString<bool> (functionArgs [0]);

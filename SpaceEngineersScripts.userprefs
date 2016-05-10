@@ -1,17 +1,17 @@
 ﻿<Properties StartupItem="SpaceEngineersScripts.csproj" RefactoringSettings.EnableRefactorings="True">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug|x86" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="modules\SpaceOS\Support\SpaceOSTests.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="modules\Autopilot\Ship.cs">
     <Files>
-      <File FileName="modules\Autopilot\Ship.cs" Line="108" Column="4" />
-      <File FileName="modules\Autopilot\AutopilotScript.cs" Line="91" Column="30" />
+      <File FileName="modules\Autopilot\Ship.cs" Line="182" Column="98" />
+      <File FileName="modules\Autopilot\AutopilotScript.cs" Line="89" Column="6" />
       <File FileName="Common\Script.cs" Line="1" Column="1" />
       <File FileName="modules\Autopilot\Program.cs" Line="1" Column="1" />
       <File FileName="Common\LogWrapper.cs" Line="1" Column="1" />
-      <File FileName="Common\GridWrapper.cs" Line="1" Column="1" />
-      <File FileName="Common\BlockWrapper.cs" Line="1" Column="1" />
+      <File FileName="Common\BlockWrapper.cs" Line="20" Column="10" />
       <File FileName="Common\StringMap.cs" Line="1" Column="1" />
-      <File FileName="Common\Utils.cs" Line="141" Column="3" />
+      <File FileName="Common\Utils.cs" Line="113" Column="54" />
       <File FileName="modules\SpaceOS\Support\SpaceOSTests.cs" Line="29" Column="4" />
+      <File FileName="Common\CubeGridWrapper.cs" Line="43" Column="50" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

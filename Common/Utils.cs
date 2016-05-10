@@ -110,7 +110,7 @@ namespace SpaceEngineersScripts
 
 		public static bool VectorEquals (Vector3D vector1, Vector3D vector2)
 		{
-			return Vector3D.Distance (vector1, vector2) < 0.01;
+			return Vector3D.Distance (vector1, vector2) < 0.05;
 		}
 
 		public static bool IsValueSmaller (double value, double objValue)

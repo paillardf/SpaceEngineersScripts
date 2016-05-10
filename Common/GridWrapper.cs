@@ -78,6 +78,8 @@ namespace SpaceEngineersScripts
 			if (from == null)
 				from = Terminal;
 			List<IMyTerminalBlock> blocks = GetBlocks<T> ();
+			LogWrapper.Echo ("blocks   " + blocks.Count);
+
 			T best = default(T);
 			if (blocks.Count > 0) {
 				best = (T)blocks [0];

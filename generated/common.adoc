@@ -1,6 +1,8 @@
 include::../common/BlockWrapper.cs[tags=content]
+include::../common/CubeGridWrapper.cs[tags=content]
 include::../common/GridWrapper.cs[tags=content]
 include::../common/LogWrapper.cs[tags=content]
 include::../common/Script.cs[tags=content]
 include::../common/StringMap.cs[tags=content]
 include::../common/Utils.cs[tags=content]
+

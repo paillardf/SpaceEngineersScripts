@@ -19,18 +19,22 @@ namespace SpaceEngineersScripts
 		}
 
 
-		public List<IMyTerminalBlock> GetBlocks<T> ()  where T : IMyTerminalBlock
+		public virtual List<IMyTerminalBlock> GetBlocks<T> ()  where T : IMyTerminalBlock
 		{
 			List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock> ();
 			Grid.GetBlocksOfType<T> (blocks);
 			return blocks;
 		}
 
+		protected virtual void GetBlockGroups (List<IMyBlockGroup> blockGroups){
+			Grid.GetBlockGroups (blockGroups);
+		}
+
 		public List<IMyTerminalBlock> GetBlocksWithName (string name, string error = "")
 		{
 			List<IMyTerminalBlock> result = new List<IMyTerminalBlock> ();
 			List<IMyBlockGroup> groups = new List<IMyBlockGroup> ();
-			Grid.GetBlockGroups (groups);
+			GetBlockGroups (groups);
 			for (int i = 0; i < groups.Count; i++) {
 				var group = groups [i];
 				if (group.Name.StartsWith (name)) {
@@ -40,8 +44,7 @@ namespace SpaceEngineersScripts
 			if (result.Count != 0) {
 				return result;
 			}
-			List<IMyTerminalBlock> blocks = new List<IMyTerminalBlock> ();
-			Grid.GetBlocks (blocks);
+			List<IMyTerminalBlock> blocks = GetBlocks<IMyTerminalBlock> ();
 			for (int i = 0; i < blocks.Count; i ++) {
 				var block = blocks [i];
 				if (block.CustomName.StartsWith (name)) {

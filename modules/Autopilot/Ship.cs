@@ -27,11 +27,11 @@ namespace SpaceEngineersScripts.Autopilot
 
 		IMyTextPanel infosScreen;
 
-		AutopilotScript script;
-
-		List<IMyTerminalBlock> gyrosBlocks;
+		public AutopilotScript script;
 
 		BlockWrapper connector;
+
+		ShipGyros gyros;
 
 		public Ship (AutopilotScript script,IMyRemoteControl block):base(block)
 		{
@@ -39,6 +39,7 @@ namespace SpaceEngineersScripts.Autopilot
 			this.GridWrapper = script.GridWrapper;
 			this.script = script;
 			rcBlocks [IFRONT] = block;
+			gyros = new ShipGyros (GridWrapper, this);
 			infosScreen = (IMyTextPanel)GridWrapper.GetBlocksWithName ("PPilot", "can't find PPilot panel") [0];
 
 			orientation = new List<Vector3D>{VectorForward, VectorBackward, VectorLeft, VectorRight, VectorUp, VectorDown};
@@ -52,7 +53,6 @@ namespace SpaceEngineersScripts.Autopilot
 					}
 				}
 			}
-			gyrosBlocks = GridWrapper.GetBlocks<IMyGyro> ();
 
 			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
 			if (connectors.Count > 0) {
@@ -78,8 +78,8 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 
 			bool runFast = false;
-			runFast = !CalculateLookingDir ();
-			RotateShip ();
+			runFast = !gyros.CalculateLookingDir ();
+			gyros.RotateShip ();
 			ShowInfos ();
 			return runFast && AutopilotEnable;// && IsArrived();
 		}	
@@ -92,14 +92,14 @@ namespace SpaceEngineersScripts.Autopilot
 		{
 
 				string t =
-					"   | " + Utils.RoundD (shipYawAngle) + "°\n" +
+				"   | " + Utils.RoundD (gyros.shipYawAngle) + "°\n" +
 				"   | " + Utils.RoundD (shipDeplacement.GetDim (2)) + "m\n" +
 					"   | " + Utils.RoundD (distancesToStop [2]) + "m\n" +
-					"   |      /  " + Utils.RoundD (shipRollAngle) + "°\n" +
+				"   |      /  " + Utils.RoundD (gyros.shipRollAngle) + "°\n" +
 					"   |    /    " + Utils.RoundD (shipDeplacement.GetDim (0)) + "m\n" +
 					"   |  /      " + Utils.RoundD (distancesToStop [0]) + "m\n" +
 					"   |/_ _ _ _ _ _ _ _ _ _ \n" +
-					"             " + Utils.RoundD (-shipPitchAngle) + "°\n" +
+				"             " + Utils.RoundD (-gyros.shipPitchAngle) + "°\n" +
 					"             " + Utils.RoundD (-shipDeplacement.GetDim (1)) + "m\n" +
 					"             " + Utils.RoundD (distancesToStop [1]) + "m\n" +
 					"\n";
@@ -172,14 +172,14 @@ namespace SpaceEngineersScripts.Autopilot
 
 
 
-			Vector3D alignPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 10// + connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks[0].Position) - newrcBlocks[0].RefGrid.GetPosition();
+			Vector3D alignPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 10;// + connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks[0].Position) - newrcBlocks[0].RefGrid.GetPosition();
 
 			Vector3D lookDir = stationConnectorWrapper.VectorLeft;
 
 
 			MoveTo (new Vector3D[]{alignPosition}, 0);
 			dockingLookDir = lookDir;
-			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward*2 //+ connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks [dockingForward].Position)- rcBlocks [dockingForward].RefGrid.GetPosition();
+			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 2; //+ connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks [dockingForward].Position)- rcBlocks [dockingForward].RefGrid.GetPosition();
 
 			
 		}
@@ -190,12 +190,10 @@ namespace SpaceEngineersScripts.Autopilot
 		public bool AutopilotEnable
 		{
 			get{
-				return gyrosBlocks [0].GetProperty ("Override").AsBool ().GetValue(gyrosBlocks [0]);
+				return gyros.Override;
 			}
 			set{
-				for (int i = 0; i < gyrosBlocks.Count; i++) {
-					gyrosBlocks [i].GetProperty ("Override").AsBool ().SetValue (gyrosBlocks [i], value);
-				}
+				gyros.Override = value;
 				rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (!Arrived && value);
 
 			}
@@ -227,74 +225,18 @@ namespace SpaceEngineersScripts.Autopilot
 			this.LookRelative = relative;
 		}
 
-		bool lookingDir;
-
-		bool CalculateLookingDir (){
-			Vector3D localDest = this.LookPoint;
-			if (localDest.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				lookingDir = true;
-				return true;
-			}
-			double rotationRoll = this.RollAngle;
-
-			Vector3D yawVect = Vector3D.Multiply (localDest, new Vector3D (1, 1, 0));
-			yawVect.Normalize ();
-			double yawAngle = Math.Acos (yawVect.GetDim (0)) * 180 / Math.PI;
-			if (yawVect.GetDim (1) > 0)
-				yawAngle = -yawAngle;
-			Vector3D pitchVect = Vector3D.Multiply (localDest, new Vector3D (1, 0, 1));
-			pitchVect.Normalize ();
-			double pitchAngle = Math.Acos (pitchVect.GetDim (0)) * 180 / Math.PI;
-			if (pitchVect.GetDim (2) < 0)
-				pitchAngle = -pitchAngle;
-
-			bool isGravity;
-			var gravityVector = - GetGravity (out isGravity);
-			gravityVector.Normalize ();
-			Vector3D localUp = TransformVectorToShipBase (gravityVector);
-
-			Vector3D rollVect = Vector3D.Multiply (localUp, new Vector3D (0, 1, 1));
-			rollVect.Normalize ();
-			double rollAngle = Math.Acos (rollVect.GetDim (2)) * 180 / Math.PI;
-			if (rollVect.GetDim (1) > 0)
-				rollAngle = -rollAngle;
-
-			speedRollAngle = (shipRollAngle - rollAngle) / script.deltaMs * 1000;
-			speedPitchAngle = (shipPitchAngle - pitchAngle) / script.deltaMs * 1000;
-			speedYawAngle = (shipYawAngle - yawAngle) / script.deltaMs * 1000;
 
 
-			bool preciseYawStop = Utils.IsValueSmaller (yawAngle, 0.4);
-			bool precisePitchStop = Utils.IsValueSmaller (pitchAngle, 0.4);
-			bool preciseRollStop = true;
-			if (Utils.IsValueSmaller (rotationRoll, 180)) {
-				rollAngle -= rotationRoll;
-				rollAngle = (rollAngle + 180) % 360 - 180;
-				preciseRollStop = Utils.IsValueSmaller (rollAngle, 0.4);
-			} else {
-				rollAngle = 0;
-			}
 
-			this.shipRollAngle = rollAngle;
-			this.shipPitchAngle = pitchAngle;
-			this.shipYawAngle = yawAngle;
-
-
-			bool isLookingDir = preciseYawStop && precisePitchStop && preciseRollStop;
-			if (isLookingDir) {
-				this.LookPoint = Utils.DEFAULT_VECTOR_3D;
-				shipYawAngle = 0;
-				shipRollAngle = 0;
-				shipPitchAngle = 0;
-			}
-			lookingDir = isLookingDir;
-
-			return isLookingDir;
-		}
-
-		bool IsLookingDir ()
+		public bool LookingDir 
 		{
-			return lookingDir;	
+			get {
+				bool lookingDir = false;
+				return bool.TryParse (map.GetValue ("lookingDir"), out lookingDir);
+			}
+			set {
+				map.SetValue ("lookingDir", value+"");
+			}
 		}
 
 
@@ -315,7 +257,7 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		private double RollAngle   { 
+		public double RollAngle   { 
 			get {
 				double rollAngle = Utils.DEFAULT_DOUBLE;
 				double.TryParse (map.GetValue ("roll"), out rollAngle);
@@ -339,7 +281,7 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		private Vector3D LookPoint   { 
+		public Vector3D LookPoint   { 
 			get {
 				Vector3D lookPoint = Utils.CastString<Vector3D> (map.GetValue ("look"));
 				if (lookPoint.Equals (Utils.DEFAULT_VECTOR_3D))
@@ -402,7 +344,7 @@ namespace SpaceEngineersScripts.Autopilot
 
 		}
 
-		Vector3D GetGravity (out bool isGravity)
+		public Vector3D GetGravity (out bool isGravity)
 		{
 			Vector3D gravity = this.rcBlocks[0].GetNaturalGravity ();
 			isGravity = gravity.Length () > 0.1;
@@ -411,61 +353,6 @@ namespace SpaceEngineersScripts.Autopilot
 			return gravity;
 		}
 
-		//------------------------------------------------------------------------
-		//--------------------GYRO MOVEMENT--------------------
-		//------------------------------------------------------------------------
-
-		const string YAW = "Yaw";
-		const string PITCH = "Pitch";
-		const string ROLL = "Roll";
-
-		double shipRollAngle = 0;
-		double shipYawAngle = 0;
-		double shipPitchAngle = 0;
-		double speedRollAngle = 0, speedYawAngle = 0, speedPitchAngle = 0;
-		float lastSpeedRollAngle = 0, lastSpeedYawAngle = 0, lastSpeedPitchAngle = 0;
-
-		public void RotateShip ()
-		{	
-
-			lastSpeedYawAngle = GetGyroSpeed (shipYawAngle, speedYawAngle, lastSpeedYawAngle);
-			ApplyOverride (gyrosBlocks, YAW, lastSpeedYawAngle);
-
-			lastSpeedPitchAngle = GetGyroSpeed (shipPitchAngle, speedPitchAngle, lastSpeedPitchAngle);
-			ApplyOverride (gyrosBlocks, PITCH, lastSpeedPitchAngle);
-
-			lastSpeedRollAngle = GetGyroSpeed (shipRollAngle, speedRollAngle, lastSpeedRollAngle);
-			ApplyOverride (gyrosBlocks, ROLL, lastSpeedRollAngle);
-
-		}
-
-		//GPS:NAME:X:Y:Z: 
-		public float GetGyroSpeed (double angle, double currentSpeed, double lastValue) 
-		{  
-			int sign = angle < 0 ? -1 : 1;  
-
-			if (Utils.IsValueSmaller(angle,0.03)) { 
-				return 0; 
-			} 
-
-			double value = (angle) / 100 + 0.2/(angle+1*sign);  
-			if (Utils.IsValueSmaller (currentSpeed, 0.3) && !Utils.IsValueSmaller (lastValue, value)) {  
-				value = lastValue + sign * 0.02;  
-				} else if (!Utils.IsValueSmaller (currentSpeed, 10+angle/3)) {  
-
-				value =value/3;  
-
-			}  
-			return (float)value;  
-
-		} 
-		public void ApplyOverride (List<IMyTerminalBlock> blocks, string action, float value)
-		{
-			for (int i = 0; i< blocks.Count; i++) {
-				var block = blocks [i];
-				block.SetValue (action, value);
-			}
-		}
 
 
 	}

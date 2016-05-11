@@ -29,7 +29,6 @@ namespace SpaceEngineersScripts.Autopilot
 			base.Update (argument);
 			Logger.Log ("delta:"+this.deltaMs);
 
-			var blocks = GridWrapper.GetBlocks<IMyTerminalBlock> ();
 			if (Initialize ()) {
 				if(argument!=null && argument.Length>0)
 					TraitArgument (argument);

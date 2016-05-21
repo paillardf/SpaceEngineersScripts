@@ -27,7 +27,7 @@ namespace SpaceEngineersScripts.Autopilot
 		public override void Update (string argument) 
 		{
 			base.Update (argument);
-			Logger.Log ("delta:"+this.deltaMs);
+			Logger.Log ("ms:"+this.deltaMs);
 
 			if (Initialize ()) {
 				if(argument!=null && argument.Length>0)
@@ -77,12 +77,17 @@ namespace SpaceEngineersScripts.Autopilot
 
 
 					}
-					ship.TravelTo (destinations, 0);
+					ship.TravelTo (destinations);
 
 				}else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
 
 					double rollAngle = Utils.DEFAULT_DOUBLE;
-					var destination = Utils.CastString<Vector3D> (functionArgs [0]);
+					var destination = Utils.DEFAULT_VECTOR_3D;
+
+					if (functionArgs.Count > 0) {
+						destination = Utils.CastString<Vector3D> (functionArgs [0]);
+
+					}
 					if (functionArgs.Count > 1) {
 						rollAngle = Utils.CastString<double> (functionArgs [1]);
 					}

@@ -6,6 +6,8 @@ using Sandbox.ModAPI.Interfaces;
 
 namespace SpaceEngineersScripts.Autopilot
 {
+	// tag::content[]
+
 	public class ShipGyros
 	{
 		List<IMyTerminalBlock> gyrosBlocks;
@@ -154,5 +156,7 @@ namespace SpaceEngineersScripts.Autopilot
 		}
 
 	}
+	// end::content[]
+
 }
 

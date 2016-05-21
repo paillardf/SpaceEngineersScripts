@@ -18,11 +18,11 @@ namespace SpaceEngineersScripts.Autopilot
 		const int IUP = 4;
 		const int IDOWN = 5;
 
-		GridWrapper GridWrapper;
+		public GridWrapper GridWrapper;
 
-		LogWrapper Logger;
+		public LogWrapper Logger;
 
-		IMyRemoteControl[] rcBlocks = new IMyRemoteControl[6];
+		IMyRemoteControl rcBlock;
 
 		IMyTextPanel infosScreen;
 
@@ -31,6 +31,7 @@ namespace SpaceEngineersScripts.Autopilot
 		IMyShipConnector connector;
 
 		ShipGyros gyros;
+
 		ShipThrusters thrusters;
 
 		Ship neastedShip;
@@ -40,24 +41,20 @@ namespace SpaceEngineersScripts.Autopilot
 			this.Logger = script.Logger;
 			this.GridWrapper = script.GridWrapper;
 			this.script = script;
-			if(block is IMyRemoteControl)
-				rcBlocks [IFRONT] = block as IMyRemoteControl;
+			if (block is IMyRemoteControl)
+				rcBlock = block as IMyRemoteControl;
+			else {
+				rcBlock = GridWrapper.GetBlock<IMyRemoteControl> ("Can't found Remote Control Block");
+			}
 			infosScreen = (IMyTextPanel)GridWrapper.GetBlocksWithName ("PPilot", "can't find PPilot panel") [0];
 
 			gyros = new ShipGyros (GridWrapper, this);
+
 			thrusters = new ShipThrusters (GridWrapper, this);
 
 			Vector3D[] orientations = GetOrientationVectors ();
 			var rcs = GridWrapper.GetBlocks<IMyRemoteControl> ();
-			for (int i = 0; i < rcs.Count; i++) {
-				if (rcs [i].NumberInGrid != block.NumberInGrid) {
-					Vector3D forward = new BlockWrapper (rcs [i]).VectorForward;
-					int index = Utils.IndexOfVectorInList (orientations, new BlockWrapper (rcs [i]).VectorForward);
-					if(rcBlocks[index] == null && i>=0){
-						rcBlocks [index] = (IMyRemoteControl) rcs [i];
-					}
-				}
-			}
+
 
 			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
 			if (connectors.Count > 0) {
@@ -74,6 +71,8 @@ namespace SpaceEngineersScripts.Autopilot
 
 		public bool Update ()
 		{
+
+
 			if (neastedShip != null) {
 				neastedShip.Update ();
 				if (neastedShip.Arrived) {
@@ -84,22 +83,20 @@ namespace SpaceEngineersScripts.Autopilot
 				}
 				return true;
 			}
-
-
-			bool autoControl = rcBlocks [this.MoveOrientation].IsUnderControl;
-
-			bool gyroUpdate = !gyros.CalculateLookingDir ();
-			if (gyroUpdate && AutopilotEnable && !autoControl) {
-				gyros.RotateShip ();
+			bool autoControl = false;
+			if (rcBlock != null) {
+				autoControl = rcBlock.IsUnderControl;
 			}
+			bool gyroUpdate = !gyros.CalculateLookingDir ();
+			gyros.RotateShip ();
 
-			bool moveShip = !Arrived;
+			bool moveShip = !Arrived && AutopilotEnable && !autoControl;
 			thrusters.MoveShip (moveShip);
+
 			ShowInfos ();
 			return (gyroUpdate || moveShip) && AutopilotEnable && !autoControl;// && IsArrived();
 		}	
-		double[] distancesToStop = new double[6];
-		
+
 
 
 		public void ShowInfos ()
@@ -108,14 +105,14 @@ namespace SpaceEngineersScripts.Autopilot
 				string t =
 				"   | " + Utils.RoundD (gyros.shipYawAngle) + "°\n" +
 				"   | " + Utils.RoundD (thrusters.shipNeededDeplacement.GetDim (2)) + "m\n" +
-					"   | " + Utils.RoundD (distancesToStop [2]) + "m\n" +
+				"   | " + Utils.RoundD (thrusters.distancesToStop [2]) + "m\n" +
 				"   |      /  " + Utils.RoundD (gyros.shipRollAngle) + "°\n" +
 				"   |    /    " + Utils.RoundD (thrusters.shipNeededDeplacement.GetDim (0)) + "m\n" +
-					"   |  /      " + Utils.RoundD (distancesToStop [0]) + "m\n" +
+				"   |  /      " + Utils.RoundD (thrusters.distancesToStop [0]) + "m\n" +
 					"   |/_ _ _ _ _ _ _ _ _ _ \n" +
 				"             " + Utils.RoundD (-gyros.shipPitchAngle) + "°\n" +
 				"             " + Utils.RoundD (-thrusters.shipNeededDeplacement.GetDim (1)) + "m\n" +
-					"             " + Utils.RoundD (distancesToStop [1]) + "m\n" +
+				"             " + Utils.RoundD (thrusters.distancesToStop [1]) + "m\n" +
 					"\n";
 
 			infosScreen.GetProperty ("FontColor").AsColor ().SetValue (infosScreen, AutopilotEnable ? Color.Green : Color.Red);
@@ -196,22 +193,21 @@ namespace SpaceEngineersScripts.Autopilot
 			this.Destination = destination;
 		}
 
-		public void TravelTo(Vector3D[] destination, int sens = IFRONT){
-			IMyRemoteControl controlBlock = rcBlocks [sens];
+		public void TravelTo(Vector3D[] destination){
+			IMyRemoteControl controlBlock = rcBlock;
 			if (controlBlock == null) {
 				Logger.Log("can't move no remoteControl block available in this direction");
 				return;
 			}
-			rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (false);
+			controlBlock.SetAutoPilotEnabled (false);
 			controlBlock.ClearWaypoints ();
-			this.MoveOrientation = sens;
 			Vector3D finalDest = VectorPosition;
 			for (int i = 0; i < destination.Length; i++) {
 				controlBlock.AddWaypoint (destination[i], Utils.VectorToStringRound(destination[i]));
 				finalDest = destination[i];
 			}
 			MoveTo (finalDest);
-			rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (this.AutopilotEnable);
+			controlBlock.SetAutoPilotEnabled (this.AutopilotEnable);
 
 		}
 
@@ -243,16 +239,6 @@ namespace SpaceEngineersScripts.Autopilot
 		}
 
 
-		private int MoveOrientation   { 
-			get {
-				int moveO = 0;
-				 int.TryParse (map.GetValue ("orientation"), out moveO);
-				return moveO;
-			}
-			set {
-				map.SetValue ("orientation", value+"");
-			}
-		}
 
 		public double RollAngle   { 
 			get {
@@ -293,7 +279,7 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		private Vector3D Destination   { 
+		public Vector3D Destination   { 
 			get {
 				Vector3D destination = Utils.CastString<Vector3D> (map.GetValue ("dest"));
 				if (destination.Equals (Utils.DEFAULT_VECTOR_3D)) {
@@ -317,9 +303,8 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		public double Masse {
-			get{ return 40000; }
-			set{ }
+		public float Masse {
+			get{ return 400000; }
 		}
 
 		public bool Arrived
@@ -349,7 +334,7 @@ namespace SpaceEngineersScripts.Autopilot
 
 		public Vector3D GetGravity (out bool isGravity)
 		{
-			Vector3D gravity = this.rcBlocks[0].GetNaturalGravity ();
+			Vector3D gravity = rcBlock.GetNaturalGravity ();
 			isGravity = gravity.Length () > 0.1;
 			if (!isGravity)
 				gravity = new Vector3D (0, 0, -1);

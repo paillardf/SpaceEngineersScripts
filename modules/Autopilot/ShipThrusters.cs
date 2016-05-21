@@ -3,14 +3,17 @@ using Sandbox.ModAPI.Ingame;
 using System.Collections.Generic;
 using VRageMath;
 using Sandbox.ModAPI.Interfaces;
+using SpaceEngineersScripts;
 
 namespace SpaceEngineersScripts.Autopilot
 {
+	// tag::content[]
+
 	public class ShipThrusters
 	{
 		Ship ship;
 
-		List<IMyThrust> thrusters;
+		List<IMyThrust> allThrusters;
 
 		List<IMyThrust>[] thrustsDir = new List<IMyThrust>[6];
 
@@ -21,28 +24,28 @@ namespace SpaceEngineersScripts.Autopilot
 		public ShipThrusters (GridWrapper gridWrapper, Ship ship)
 		{
 			this.ship = ship;
-			thrusters = gridWrapper.GetBlocks<IMyThrust> ().ConvertAll<IMyThrust>(element => element as IMyThrust);
+			allThrusters = gridWrapper.GetBlocks<IMyThrust> ().ConvertAll<IMyThrust>(element => element as IMyThrust);
 			for (int i = 0 ; i < thrustsDir.Length; i++){
 				thrustsDir[i] = new List<IMyThrust>();
 			}
 
-			for (int i = 0; i < thrusters.Count; i++) {
-				BlockWrapper b = new BlockWrapper (thrusters [i]);
-				int orientation = Utils.IndexOfVectorInList (ship.GetOrientationVectors (), b.VectorForward);
+			for (int i = 0; i < allThrusters.Count; i++) {
+				BlockWrapper b = new BlockWrapper (allThrusters [i]);
+				int orientation = Utils.IndexOfVectorInList (ship.GetOrientationVectors (), b.VectorBackward);
 
 				thrustsDir [orientation].Add(b.block as IMyThrust);
 				thrustersPower [orientation] += GetThrusterPower (b.block);
 
 			}
 
+	
 		}
 
 
 		public void MoveShip (bool apply)
 		{
 
-			Vector3D dest;
-			Vector3D.TryParse (ship.map.GetValue ("dest"), out dest);
+			Vector3D dest = ship.Destination;
 			Vector3D localVector = ship.TransformVectorToShipBase (dest - ship.VectorPosition);
 
 			shipNeededDeplacement = localVector;
@@ -55,7 +58,9 @@ namespace SpaceEngineersScripts.Autopilot
 			for (int i = 0; i<6; i++) {
 
 				speeds [i] = Math.Pow (-1, i) * (lastLocalVector.GetDim (i / 2) - localVector.GetDim (i / 2)) / ship.script.deltaMs * 1000;
+
 				accelerations [i] = (speeds [i] - lastSpeeds [i]) / ship.script.deltaMs * 1000;
+
 				lastSpeeds [i] = speeds [i];
 
 				List<IMyThrust> thrusters = thrustsDir[i];
@@ -63,36 +68,42 @@ namespace SpaceEngineersScripts.Autopilot
 
 				double distance = localVector.GetDim (i / 2) * Math.Pow (-1, i);
 				if (distance < 0.2) {
+
 					if(apply)
 						StopThrusters (thrusters);
 				} else {
 
 
+
 					double currentPower = 0;
 					double power = thrustersPower [i] + Math.Pow (-1, i) * localGravity.GetDim (i / 2) * ship.Masse;
 					for (int b = 0; b<thrusters.Count; b++) {
-						currentPower += thrusters[i].ThrustOverride;
+						currentPower += thrusters[b].ThrustOverride;
 					}
 
 					double v = speeds [i];
 					double a = accelerations [i];
 
 
+
 					double maxAcceleration = power / ship.Masse;
 					double timeToStop = v / maxAcceleration;
 					double distanceToStop = v * timeToStop + (maxAcceleration * timeToStop * timeToStop) / 2;
 					distancesToStop [i / 2] = distanceToStop;
+
 					if (distance < distanceToStop * 2 || v > maxSpeed) {
+						ship.Logger.Log ("stop :" + v +"   "+ maxSpeed);
+
 						if (apply) {
 							StopThrusters (thrusters);
 						}
 						lastNeededPower [i] = 0;
 					} else {
+
 						double deltaV = maxSpeed - v;
 
 						double neededAcc = Math.Max (0.1, Math.Min (deltaV, distance / 2) / 4);
 						double neededPower = neededAcc * ship.Masse - Math.Pow (-1, i) * localGravity.GetDim (i / 2) * ship.Masse;
-
 						neededPower = Math.Max (neededPower, 5000);
 
 						if (v <= 0.1 && lastNeededPower [i] >= neededPower && a < 0) {
@@ -144,7 +155,7 @@ namespace SpaceEngineersScripts.Autopilot
 		public Vector3D shipNeededDeplacement;
 		double[] speeds = new double[6];
 		double[] accelerations = new double[6];
-		double[] distancesToStop = new double[3];
+		public double[] distancesToStop = new double[3];
 		double[] lastNeededPower = new double[6];
 
 
@@ -201,7 +212,7 @@ namespace SpaceEngineersScripts.Autopilot
 		public void StopThrusters (List<IMyThrust> thrusters = null)
 		{
 			if (thrusters == null) {
-				thrusters = this.thrusters;
+				thrusters = this.allThrusters;
 			}
 			for (int i = 0; i < thrusters.Count; i++) {
 				var T = thrusters [i] as IMyThrust;
@@ -213,5 +224,7 @@ namespace SpaceEngineersScripts.Autopilot
 
 	
 	}
+	// end::content[]
+
 }
 

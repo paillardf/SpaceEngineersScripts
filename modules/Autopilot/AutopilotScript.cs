@@ -57,21 +57,29 @@ namespace SpaceEngineersScripts.Autopilot
 				String functionName;
 				List<string> functionArgs = Utils.ExtractFunctionParameters (arg, out functionName);
 				if (functionName.StartsWith ("go") || functionName.StartsWith ("goDelta")) {
-
 					var destination = Utils.DEFAULT_VECTOR_3D;
 					if (functionArgs.Count > 0)
 						destination = Utils.CastString<Vector3D> (functionArgs [0]);
 
-
-
 					if (functionName.EndsWith ("Delta")) {
 						destination = ship.VectorPosition + ship.VectorForward * destination.GetDim (0) + ship.VectorLeft * destination.GetDim (1) + ship.VectorUp * destination.GetDim (2);
 					}
+					ship.MoveTo (destination);
+				} else if( functionName.StartsWith ("travel") || functionName.StartsWith ("travelDelta")){
+					var destinations = new Vector3D[functionArgs.Count];
 
-					ship.MoveTo (new Vector3D[]{destination}, 0);
+					for (int i = 0; i < functionArgs.Count; i++) {
+						var d = Utils.CastString<Vector3D> (functionArgs [i]);
+						if (functionName.EndsWith ("Delta")) {
+							d = ship.VectorPosition + ship.VectorForward * d.GetDim (0) + ship.VectorLeft * d.GetDim (1) + ship.VectorUp * d.GetDim (2);
+						}
+						destinations [i] = d;
 
 
-				} else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
+					}
+					ship.TravelTo (destinations, 0);
+
+				}else if (functionName.StartsWith ("lookAt") || functionName.StartsWith ("lookDir")) {
 
 					double rollAngle = Utils.DEFAULT_DOUBLE;
 					var destination = Utils.CastString<Vector3D> (functionArgs [0]);
@@ -88,14 +96,14 @@ namespace SpaceEngineersScripts.Autopilot
 					
 					ship.UnDock ();
 
-				}else if (functionName.StartsWith ("precise")) {
+				}else if (functionName.StartsWith ("maxSpeed")) {
 					if (functionArgs.Count > 0) {
 
-						bool precise = Utils.CastString<bool> (functionArgs [0]);
+						double speed = Utils.CastString<double> (functionArgs [0]);
 
-						ship.PreciseMode = precise;
+						ship.MaxSpeed = speed;
 					} else {
-						ship.PreciseMode = true;
+						ship.MaxSpeed = 300;
 
 					}
 

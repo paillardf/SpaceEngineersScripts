@@ -99,9 +99,9 @@ namespace SpaceEngineersScripts
 		}
 
 
-		public static int indexOfVectorInList(List<Vector3D> list, Vector3D vector){
+		public static int IndexOfVectorInList(Vector3D[] list, Vector3D vector){
 
-			for (int i = 0; i < list.Count; i++) {
+			for (int i = 0; i < list.Length; i++) {
 				if (VectorEquals(list [i], vector))
 					return i;
 			}

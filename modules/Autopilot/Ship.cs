@@ -22,32 +22,37 @@ namespace SpaceEngineersScripts.Autopilot
 
 		LogWrapper Logger;
 
-		List<Vector3D> orientation;
 		IMyRemoteControl[] rcBlocks = new IMyRemoteControl[6];
 
 		IMyTextPanel infosScreen;
 
 		public AutopilotScript script;
 
-		BlockWrapper connector;
+		IMyShipConnector connector;
 
 		ShipGyros gyros;
+		ShipThrusters thrusters;
 
-		public Ship (AutopilotScript script,IMyRemoteControl block):base(block)
+		Ship neastedShip;
+
+		public Ship (AutopilotScript script,IMyTerminalBlock block):base(block)
 		{
 			this.Logger = script.Logger;
 			this.GridWrapper = script.GridWrapper;
 			this.script = script;
-			rcBlocks [IFRONT] = block;
-			gyros = new ShipGyros (GridWrapper, this);
+			if(block is IMyRemoteControl)
+				rcBlocks [IFRONT] = block as IMyRemoteControl;
 			infosScreen = (IMyTextPanel)GridWrapper.GetBlocksWithName ("PPilot", "can't find PPilot panel") [0];
 
-			orientation = new List<Vector3D>{VectorForward, VectorBackward, VectorLeft, VectorRight, VectorUp, VectorDown};
+			gyros = new ShipGyros (GridWrapper, this);
+			thrusters = new ShipThrusters (GridWrapper, this);
+
+			Vector3D[] orientations = GetOrientationVectors ();
 			var rcs = GridWrapper.GetBlocks<IMyRemoteControl> ();
 			for (int i = 0; i < rcs.Count; i++) {
 				if (rcs [i].NumberInGrid != block.NumberInGrid) {
 					Vector3D forward = new BlockWrapper (rcs [i]).VectorForward;
-					int index = Utils.indexOfVectorInList (orientation, new BlockWrapper (rcs [i]).VectorForward);
+					int index = Utils.IndexOfVectorInList (orientations, new BlockWrapper (rcs [i]).VectorForward);
 					if(rcBlocks[index] == null && i>=0){
 						rcBlocks [index] = (IMyRemoteControl) rcs [i];
 					}
@@ -56,34 +61,43 @@ namespace SpaceEngineersScripts.Autopilot
 
 			var connectors = GridWrapper.GetBlocks<IMyShipConnector> ();
 			if (connectors.Count > 0) {
-				connector = new BlockWrapper (connectors [0]);
-				dockingForward = Utils.indexOfVectorInList (orientation, connector.VectorForward);
-				dockingBackward = Utils.indexOfVectorInList (orientation, connector.VectorBackward);
-
-				if (dockingForward < 0 || dockingBackward < 0 || rcBlocks [dockingForward] == null || rcBlocks [dockingBackward] == null) {
-					throw new Exception ("RemoteControllers not fount in the forward and backward directions of your connector " + connector.GetName ());
-				}
+				connector = (IMyShipConnector)( connectors[0]);
 			}
 
 
 
 		}
 
-
+		public Vector3D[] GetOrientationVectors(){
+			return new Vector3D[6]{VectorForward, VectorBackward, VectorLeft, VectorRight, VectorUp, VectorDown};
+		}
 
 		public bool Update ()
 		{
-			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)) {
-				Dock ();
+			if (neastedShip != null) {
+				neastedShip.Update ();
+				if (neastedShip.Arrived) {
+					if (neastedShip.block == connector) {
+						connector.ApplyAction("SwitchLock");
+					}
+					neastedShip = null;
+				}
+				return true;
 			}
 
-			bool runFast = false;
-			runFast = !gyros.CalculateLookingDir ();
-			gyros.RotateShip ();
+
+			bool autoControl = rcBlocks [this.MoveOrientation].IsUnderControl;
+
+			bool gyroUpdate = !gyros.CalculateLookingDir ();
+			if (gyroUpdate && AutopilotEnable && !autoControl) {
+				gyros.RotateShip ();
+			}
+
+			bool moveShip = !Arrived;
+			thrusters.MoveShip (moveShip);
 			ShowInfos ();
-			return runFast && AutopilotEnable;// && IsArrived();
+			return (gyroUpdate || moveShip) && AutopilotEnable && !autoControl;// && IsArrived();
 		}	
-		Vector3D shipDeplacement;
 		double[] distancesToStop = new double[6];
 		
 
@@ -93,14 +107,14 @@ namespace SpaceEngineersScripts.Autopilot
 
 				string t =
 				"   | " + Utils.RoundD (gyros.shipYawAngle) + "°\n" +
-				"   | " + Utils.RoundD (shipDeplacement.GetDim (2)) + "m\n" +
+				"   | " + Utils.RoundD (thrusters.shipNeededDeplacement.GetDim (2)) + "m\n" +
 					"   | " + Utils.RoundD (distancesToStop [2]) + "m\n" +
 				"   |      /  " + Utils.RoundD (gyros.shipRollAngle) + "°\n" +
-					"   |    /    " + Utils.RoundD (shipDeplacement.GetDim (0)) + "m\n" +
+				"   |    /    " + Utils.RoundD (thrusters.shipNeededDeplacement.GetDim (0)) + "m\n" +
 					"   |  /      " + Utils.RoundD (distancesToStop [0]) + "m\n" +
 					"   |/_ _ _ _ _ _ _ _ _ _ \n" +
 				"             " + Utils.RoundD (-gyros.shipPitchAngle) + "°\n" +
-					"             " + Utils.RoundD (-shipDeplacement.GetDim (1)) + "m\n" +
+				"             " + Utils.RoundD (-thrusters.shipNeededDeplacement.GetDim (1)) + "m\n" +
 					"             " + Utils.RoundD (distancesToStop [1]) + "m\n" +
 					"\n";
 
@@ -111,9 +125,6 @@ namespace SpaceEngineersScripts.Autopilot
 		}
 
 		Vector3D dockingPosition = Utils.DEFAULT_VECTOR_3D;
-		Vector3D dockingLookDir = Utils.DEFAULT_VECTOR_3D;
-		int dockingForward;
-		int dockingBackward;
 
 		public void UnDock(){
 			if (connector == null) {
@@ -121,8 +132,11 @@ namespace SpaceEngineersScripts.Autopilot
 				return;
 			}
 
+			neastedShip = new Ship (script, connector);
+				
+			neastedShip.LookingAt (neastedShip.VectorForward, neastedShip.gyros.shipRollAngle, true);
 			connector.ApplyAction("OnOff_Off");
-			MoveTo (new Vector3D[]{connector.VectorForward * 8}, dockingBackward);
+			MoveTo (neastedShip.VectorPosition+ neastedShip.VectorForward * 8);
 		}
 
 
@@ -132,28 +146,12 @@ namespace SpaceEngineersScripts.Autopilot
 				return;
 			}
 
-			if (!dockingPosition.Equals (Utils.DEFAULT_VECTOR_3D)&&!dockingPosition.Equals (-Utils.DEFAULT_VECTOR_3D)) {
-				if (Arrived) {
-					MoveTo (new Vector3D[]{dockingPosition}, dockingForward);
-					dockingPosition = -Utils.DEFAULT_VECTOR_3D;
-				}
-				return;
-			}else if(dockingPosition.Equals (-Utils.DEFAULT_VECTOR_3D)){
-				if (Arrived) {
-					connector.block.ApplyAction("SwitchLock");
-					dockingPosition = Utils.DEFAULT_VECTOR_3D;
-				}
-				return;
-
-			}
-				
-			connector.ApplyAction("OnOff_On");
 			IMyShipConnector stationConnector = null;
 			var sensors = GridWrapper.GetBlocks<IMySensorBlock> ();
 			for (int i = 0; i < sensors.Count; i++) {
 				var detected = ((IMySensorBlock)sensors [i]).LastDetectedEntity;
 				if (detected != null && detected is IMyCubeGrid)  {
-					CubeGridWrapper wrapper = new CubeGridWrapper (detected as IMyCubeGrid, connector.block);
+					CubeGridWrapper wrapper = new CubeGridWrapper (detected as IMyCubeGrid, connector);
 					stationConnector = wrapper.GetNearest<IMyShipConnector> ();
 					if (stationConnector != null) {
 						break;
@@ -166,22 +164,17 @@ namespace SpaceEngineersScripts.Autopilot
 				Logger.Log("No station connector detected");
 				return;
 			}
-			
 
 			BlockWrapper stationConnectorWrapper = new BlockWrapper (stationConnector);
+		
+			Vector3D dockingPosition = stationConnectorWrapper.VectorPosition+stationConnectorWrapper.VectorForward;
 
+			neastedShip = new Ship (script, connector);
+			neastedShip.MaxSpeed = 5;
+			connector.ApplyAction("OnOff_On");
+			neastedShip.LookingAt (dockingPosition, -1000, false);
+			neastedShip.MoveTo (dockingPosition);
 
-
-			Vector3D alignPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 10;// + connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks[0].Position) - newrcBlocks[0].RefGrid.GetPosition();
-
-			Vector3D lookDir = stationConnectorWrapper.VectorLeft;
-
-
-			MoveTo (new Vector3D[]{alignPosition}, 0);
-			dockingLookDir = lookDir;
-			dockingPosition = stationConnector.GetPosition () + stationConnectorWrapper.VectorForward * 2; //+ connector.RefGrid.GridIntegerToWorld (connector.block.Position - rcBlocks [dockingForward].Position)- rcBlocks [dockingForward].RefGrid.GetPosition();
-
-			
 		}
 
 
@@ -194,26 +187,30 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 			set{
 				gyros.Override = value;
-				rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (!Arrived && value);
 
 			}
 		}
 
+		public void MoveTo(Vector3D destination){
+			this.Arrived = false;
+			this.Destination = destination;
+		}
 
-		public void MoveTo(Vector3D[] destination, int sens = IFRONT){
+		public void TravelTo(Vector3D[] destination, int sens = IFRONT){
 			IMyRemoteControl controlBlock = rcBlocks [sens];
 			if (controlBlock == null) {
 				Logger.Log("can't move no remoteControl block available in this direction");
 				return;
 			}
-			Arrived = false;
 			rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (false);
 			controlBlock.ClearWaypoints ();
 			this.MoveOrientation = sens;
+			Vector3D finalDest = VectorPosition;
 			for (int i = 0; i < destination.Length; i++) {
 				controlBlock.AddWaypoint (destination[i], Utils.VectorToStringRound(destination[i]));
-				this.Destination = destination[i];
+				finalDest = destination[i];
 			}
+			MoveTo (finalDest);
 			rcBlocks [this.MoveOrientation].SetAutoPilotEnabled (this.AutopilotEnable);
 
 		}
@@ -309,15 +306,20 @@ namespace SpaceEngineersScripts.Autopilot
 			}
 		}
 
-		public bool PreciseMode {
+		public double MaxSpeed {
 			get {
-				bool precise = false;
-				bool.TryParse (map.GetValue ("precise"), out precise);
-				return precise;
+				double speed = 300;
+				double.TryParse (map.GetValue ("speed"), out speed);
+				return speed;
 			}
 			set{
-				map.SetValue ("precise", ""+value);
+				map.SetValue ("speed", ""+value);
 			}
+		}
+
+		public double Masse {
+			get{ return 40000; }
+			set{ }
 		}
 
 		public bool Arrived
@@ -330,6 +332,7 @@ namespace SpaceEngineersScripts.Autopilot
 				return wasArrive || arrived;
 			}
 			set{
+				neastedShip = null;
 				map.SetValue ("arrived", ""+value);
 			}
 
